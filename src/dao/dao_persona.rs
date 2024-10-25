@@ -42,8 +42,8 @@ impl PersonaDAO for PersonaDaoImpl {
 
         if let Ok(mut stmt) = connection.prepare("select * from Persona where id = :id") {
             stmt.bind((":id", id)).expect("Error al iterar sobre los resultado");
-
             personas = iterar_stmt_persona(&mut stmt);
+            return personas.get(0);
         } else {
             error!("Could not connect to persona table.");
         }
@@ -60,7 +60,6 @@ impl PersonaDAO for PersonaDaoImpl {
 
         if let Ok(mut stmt) = connection.prepare("select * from Persona") {
             personas = iterar_stmt_persona(&mut stmt);
-            return personas.get(0);
         } else {
             error!("Could not connect to persona table.");
         }
