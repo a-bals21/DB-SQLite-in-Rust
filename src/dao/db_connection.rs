@@ -1,44 +1,40 @@
 use std::env;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use dotenv::dotenv;
 use log::error;
-use sqlite::{Connection, Result};
+use sqlite::Connection;
 
-struct Database {
+// Estructura para manejar la conexión a la base de datos
+pub struct Database {
     connection: Option<Connection>,
 }
 
 impl Database {
-    fn new(path: &str) -> Database {
-        let path = Path::new(&path);
+    pub fn new() -> Database {
+        dotenv().ok();
 
-        if !path.exists() {
-            error!("DB file does not exist.");
+        if let Ok(db_url) = env::var("DB_URL") {
+            let path = Path::new(&db_url);
+
+            if !path.exists() {
+                error!("DB file does not exist.");
+                return Database { connection: None };
+            }
+
+            if let Ok(conn) = Connection::open(path) {
+                return Database { connection: Some(conn) };
+            }
+
+            error!("Failed to open the database connection.");
             return Database { connection: None };
         }
 
-        match Connection::open(path) {
-            Ok(conn) => Database { connection: Some(conn) },
-            Err(_) => Database { connection: None },
-        }
+        error!("DATABASE_URL not set.");
+
+        Database { connection: None }
     }
 
-    pub fn get_connection(&mut self) -> Option<&Connection> {
+    pub fn connection(&self) -> Option<&Connection> {
         self.connection.as_ref()
     }
-}
-
-// Singleton
-lazy_static::lazy_static! {
-    static ref DB_INSTANCE: Arc<Mutex<Database>> = {
-        dotenv::dotenv().ok();
-        let db_url: String = std::env::var("DB_URL").expect("No DB_URL environment variable.");
-
-        let db = Database::new(db_url.as_str());
-        Arc::new(Mutex::new(db))
-    };
-}
-
-pub fn get_db() -> Arc<Mutex<Database>> {
-    DB_INSTANCE.clone()
 }
